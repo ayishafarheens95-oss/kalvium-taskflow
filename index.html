@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TaskFlow API Frontend</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .task { border: 1px solid #ddd; padding: 10px; margin: 10px 0; }
+    .task.pending { background-color: #f9f9f9; }
+    .task .title { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Task Manager</h1>
+
+  <form id="taskForm">
+    <h2>Add New Task</h2>
+    <label>
+      Title (required):<br />
+      <input type="text" id="title" required />
+    </label><br /><br />
+    <label>
+      Description:<br />
+      <textarea id="description"></textarea>
+    </label><br /><br />
+    <label>
+      Priority (required):<br />
+      <select id="priority" required>
+        <option value="">--Select Priority--</option>
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+        <option value="urgent">Urgent</option>
+      </select>
+    </label><br /><br />
+    <button type="submit">Add Task</button>
+  </form>
+
+  <h2>Task List</h2>
+  <div id="tasks"></div>
+
+  <script>
+    const apiUrl = 'http://localhost:3000/api/tasks'; // Change to your deployed URL if needed
+
+    // Fetch and display all tasks
+    async function fetchTasks() {
+      const tasksDiv = document.getElementById('tasks');
+      tasksDiv.innerHTML = 'Loading tasks...';
+      try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error('Failed to fetch tasks');
+        const tasks = await response.json();
+        if (tasks.length === 0) {
+          tasksDiv.innerHTML = '<p>No tasks found.</p>';
+          return;
+        }
+        tasksDiv.innerHTML = '';
+        tasks.forEach(task => {
+          const div = document.createElement('div');
+          div.className = 'task ' + task.status;
+          div.innerHTML = `
+            <div class="title">${task.title} [${task.priority}]</div>
+            <div>${task.description}</div>
+            <small>Status: ${task.status} | Created at: ${new Date(task.createdAt).toLocaleString()}</small>
+          `;
+          tasksDiv.appendChild(div);
+        });
+      } catch (error) {
+        tasksDiv.innerHTML = `<p style="color:red;">Error loading tasks: ${error.message}</p>`;
+      }
+    }
+
+    // Handle form submit to add a new task
+    document.getElementById('taskForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const title = document.getElementById('title').value.trim();
+      const description = document.getElementById('description').value.trim();
+      const priority = document.getElementById('priority').value;
+
+      if (!title || !priority) {
+        alert('Please fill in the required fields.');
+        return;
+      }
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description, priority })
+        });
+        if (!response.ok) {
+          const errorData = await response.json();
+          alert('Error: ' + (errorData.error || 'Failed to add task'));
+          return;
+        }
+        // Clear form
+        e.target.reset();
+        // Refresh task list
+        fetchTasks();
+      } catch (error) {
+        alert('Network error: ' + error.message);
+      }
+    });
+
+    // Load tasks when page loads
+    fetchTasks();
+  </script>
+</body>
+</html>
